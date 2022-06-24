@@ -1,0 +1,61 @@
+[[breaking-changes-7.2]]
+== Breaking changes in 7.2
+++++
+<titleabbrev>7.2</titleabbrev>
+++++
+
+This section discusses the changes that you need to be aware of when migrating
+your application to Elasticsearch 7.2.
+
+See also <<release-highlights>> and <<es-release-notes>>.
+
+* <<breaking_72_discovery_changes>>
+* <<breaking_72_ilm_deprecations>>
+* <<breaking_72_ingest_changes>>
+
+//NOTE: The notable-breaking-changes tagged regions are re-used in the
+//Installation and Upgrade Guide
+
+//tag::notable-breaking-changes[]
+
+[discrete]
+[[breaking_72_discovery_changes]]
+=== Discovery changes
+
+[discrete]
+==== Only a single port may be given for each seed host.
+
+In earlier versions you could include a range of ports in entries in the
+`discovery.seed_hosts` list, but {es} used only the first port in the range and
+unexpectedly ignored the rest.  For instance if you set `discovery.seed_hosts:
+"10.11.12.13:9300-9310"` then {es} would only use `10.11.12.13:9300` for
+discovery. Seed host addresses containing port ranges are now rejected.
+
+[discrete]
+[[breaking_72_ilm_deprecations]]
+=== {ilm-cap} ({ilm-init}) deprecations
+
+[discrete]
+[[deprecate-ilm-poll-interval-1s]]
+==== An {ilm-init} poll interval of less than one second is deprecated.
+
+Setting `indices.lifecycle.poll_interval` to less than one second (`1s`) is now
+deprecated. If the `indices.lifecycle.poll_interval` cluster setting is too low,
+it can cause excessive load on a cluster.
+
+To avoid deprecation warnings, use a setting value of `1s` or greater.
+
+[discrete]
+[[breaking_72_ingest_changes]]
+=== Ingest pipeline changes
+
+[discrete]
+[[deprecate-ecs-parameter]]
+==== The `user_agent` ingest processor's `ecs` parameter is deprecated.
+
+The `ecs` parameter for the `user_agent` ingest processor is deprecated and will
+be removed in 8.0. In 8.x, the `user_agent` ingest processor will only return
+{ecs-ref}[Elastic Common Schema (ECS)] fields.
+
+To avoid deprecation warnings, remove the parameter from your ingest pipelines.
+// end::notable-breaking-changes[]

@@ -1,0 +1,57 @@
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0 and the Server Side Public License, v 1; you may not use this file except
+ * in compliance with, at your election, the Elastic License 2.0 or the Server
+ * Side Public License, v 1.
+ */
+
+import org.elasticsearch.gradle.PropertyNormalization
+import org.elasticsearch.gradle.info.BuildParams
+import org.elasticsearch.gradle.test.AntFixture
+
+apply plugin: 'elasticsearch.yaml-rest-test'
+apply plugin: 'elasticsearch.internal-cluster-test'
+
+
+esplugin {
+  description 'Module for URL repository'
+  classname 'org.elasticsearch.plugin.repository.url.URLRepositoryPlugin'
+}
+
+restResources {
+  restApi {
+    includeCore '_common', 'cluster', 'nodes', 'indices', 'index', 'bulk', 'count', 'snapshot'
+  }
+}
+
+ // This directory is shared between two URL repositories and one FS repository in YAML integration tests
+File repositoryDir = new File(project.buildDir, "shared-repository")
+
+/** A task to start the URLFixture which exposes the repositoryDir over HTTP **/
+def urlFixtureTaskProvider = tasks.register("urlFixture", AntFixture) {
+  dependsOn "testClasses"
+  doFirst {
+    repositoryDir.mkdirs()
+  }
+  env 'CLASSPATH', "${-> project.sourceSets.test.runtimeClasspath.asPath}"
+  executable = "${BuildParams.runtimeJavaHome}/bin/java"
+  args 'org.elasticsearch.repositories.url.URLFixture', baseDir, "${repositoryDir.absolutePath}"
+}
+
+tasks.named("yamlRestTest").configure {
+  dependsOn urlFixtureTaskProvider
+}
+
+tasks.named("internalClusterTest").configure {
+  dependsOn urlFixtureTaskProvider
+}
+
+testClusters.all {
+  // repositoryDir is used by a FS repository to create snapshots
+  setting 'path.repo', "${repositoryDir.absolutePath}", PropertyNormalization.IGNORE_VALUE
+  // repositoryDir is used by two URL repositories to restore snapshots
+  setting 'repositories.url.allowed_urls', {
+    "http://snapshot.test*,http://${urlFixture.addressAndPort}"
+  }, PropertyNormalization.IGNORE_VALUE
+}

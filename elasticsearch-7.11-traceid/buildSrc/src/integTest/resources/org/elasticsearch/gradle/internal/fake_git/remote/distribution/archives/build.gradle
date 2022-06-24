@@ -1,0 +1,22 @@
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0 and the Server Side Public License, v 1; you may not use this file except
+ * in compliance with, at your election, the Elastic License 2.0 or the Server
+ * Side Public License, v 1.
+ */
+
+subprojects {
+    apply plugin:'base'
+
+    tasks.register('tar', Tar) {
+        from('.')
+        destinationDirectory.set(file('build/distributions'))
+        archiveBaseName.set("elasticsearch${project.name.startsWith('oss')?'-oss':''}")
+        archiveVersion.set("8.0.1-SNAPSHOT")
+        archiveClassifier.set("darwin-x86_64")
+        archiveExtension.set('tar.gz')
+    }
+
+    assemble.dependsOn('tar')
+}

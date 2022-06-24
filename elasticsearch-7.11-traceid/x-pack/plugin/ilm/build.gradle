@@ -1,0 +1,20 @@
+apply plugin: 'elasticsearch.esplugin'
+apply plugin: 'elasticsearch.internal-cluster-test'
+
+esplugin {
+  name 'x-pack-ilm'
+  description 'Elasticsearch Expanded Pack Plugin - Index Lifecycle Management'
+  classname 'org.elasticsearch.xpack.ilm.IndexLifecycle'
+  extendedPlugins = ['x-pack-core']
+  hasNativeController false
+  requiresKeystore true
+}
+archivesBaseName = 'x-pack-ilm'
+
+dependencies {
+  compileOnly project(path: xpackModule('core'), configuration: 'default')
+  testImplementation project(path: xpackModule('core'), configuration: 'testArtifacts')
+  testImplementation project(path: xpackModule('data-streams'), configuration: 'default')
+}
+
+addQaCheckDependencies()

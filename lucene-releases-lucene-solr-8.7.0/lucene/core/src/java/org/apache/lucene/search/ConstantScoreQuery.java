@@ -108,9 +108,8 @@ public final class ConstantScoreQuery extends Query {
     }
   }
 
-  @Override
-  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
-    final Weight innerWeight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1f);
+
+  public Weight createWeightHelper(IndexSearcher searcher, ScoreMode scoreMode, float boost, Weight innerWeight) throws IOException {
     if (scoreMode.needsScores()) {
       return new ConstantScoreWeight(this, boost) {
         @Override
@@ -176,17 +175,29 @@ public final class ConstantScoreQuery extends Query {
   }
 
   @Override
+  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+    final Weight innerWeight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1f, true);
+    return createWeightHelper(searcher, scoreMode, boost, innerWeight);
+  }
+
+  @Override
+  public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+    final Weight innerWeight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1f, false);
+    return createWeightHelper(searcher, scoreMode, boost, innerWeight);
+  }
+
+  @Override
   public String toString(String field) {
     return new StringBuilder("ConstantScore(")
-      .append(query.toString(field))
-      .append(')')
-      .toString();
+            .append(query.toString(field))
+            .append(')')
+            .toString();
   }
 
   @Override
   public boolean equals(Object other) {
     return sameClassAs(other) &&
-           query.equals(((ConstantScoreQuery) other).query);
+            query.equals(((ConstantScoreQuery) other).query);
   }
 
   @Override

@@ -46,7 +46,7 @@ import org.apache.lucene.util.BytesRef;
 
 /** A Query that matches documents containing a particular sequence of terms.
  * A PhraseQuery is built by QueryParser for input like <code>"new york"</code>.
- * 
+ *
  * <p>This query may be combined with other terms or queries with a {@link BooleanQuery}.
  *
  * <p><b>NOTE</b>:
@@ -172,7 +172,7 @@ public class PhraseQuery extends Query {
     for (int i = 1; i < positions.length; ++i) {
       if (positions[i] < positions[i - 1]) {
         throw new IllegalArgumentException("Positions should not go backwards, got "
-            + positions[i-1] + " before " + positions[i]);
+                + positions[i-1] + " before " + positions[i]);
       }
     }
     this.slop = slop;
@@ -372,7 +372,7 @@ public class PhraseQuery extends Query {
       int result = 1;
       result = prime * result + position;
       for (int i=0; i<nTerms; i++) {
-        result = prime * result + terms[i].hashCode(); 
+        result = prime * result + terms[i].hashCode();
       }
       return result;
     }
@@ -515,6 +515,22 @@ public class PhraseQuery extends Query {
     };
   }
 
+
+
+  @Override
+  public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+    final String threadName = Thread.currentThread().getName();
+    try {
+      Thread.currentThread().setName(threadName + "_Field:_" + field);
+      return createWeight(searcher, scoreMode, boost);
+    } finally {
+      Thread.currentThread().setName(threadName);
+    }
+  }
+
+
+
+
   // only called from assert
   private static boolean termNotInReader(LeafReader reader, Term term) throws IOException {
     return reader.docFreq(term) == 0;
@@ -572,13 +588,13 @@ public class PhraseQuery extends Query {
   @Override
   public boolean equals(Object other) {
     return sameClassAs(other) &&
-           equalsTo(getClass().cast(other));
+            equalsTo(getClass().cast(other));
   }
-  
+
   private boolean equalsTo(PhraseQuery other) {
-    return slop == other.slop && 
-           Arrays.equals(terms, other.terms) && 
-           Arrays.equals(positions, other.positions);
+    return slop == other.slop &&
+            Arrays.equals(terms, other.terms) &&
+            Arrays.equals(positions, other.positions);
   }
 
   /** Returns a hash code value for this object.*/

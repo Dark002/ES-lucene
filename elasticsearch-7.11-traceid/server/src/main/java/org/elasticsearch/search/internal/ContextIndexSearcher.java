@@ -162,8 +162,30 @@ public class ContextIndexSearcher extends IndexSearcher implements Releasable {
         }
     }
 
+    @Override
+    public Weight createWeight(Query query, ScoreMode scoreMode, float boost, boolean fieldAdded) throws IOException {
+        if (profiler != null) {
+            // createWeight() is called for each query in the tree, so we tell the queryProfiler
+            // each invocation so that it can build an internal representation of the query
+            // tree
+            QueryProfileBreakdown profile = profiler.getQueryBreakdown(query);
+            Timer timer = profile.getTimer(QueryTimingType.CREATE_WEIGHT);
+            timer.start();
+            final Weight weight;
+            try {
+                weight = query.createWeight(this, scoreMode, boost);
+            } finally {
+                timer.stop();
+                profiler.pollLastElement();
+            }
+            return new ProfileWeight(query, weight, profile);
+        } else {
+            return super.createWeight(query, scoreMode, boost, fieldAdded);
+        }
+    }
+
     public void search(List<LeafReaderContext> leaves, Weight weight, CollectorManager manager,
-            QuerySearchResult result, DocValueFormat[] formats, TotalHits totalHits) throws IOException {
+                       QuerySearchResult result, DocValueFormat[] formats, TotalHits totalHits) throws IOException {
         final List<Collector> collectors = new ArrayList<>(leaves.size());
         for (LeafReaderContext ctx : leaves) {
             final Collector collector = manager.newCollector();
@@ -224,7 +246,7 @@ public class ContextIndexSearcher extends IndexSearcher implements Releasable {
             if (scorer != null) {
                 try {
                     intersectScorerAndBitSet(scorer, liveDocsBitSet, leafCollector,
-                            this.cancellable.isEnabled() ? cancellable::checkCancelled: () -> {});
+                        this.cancellable.isEnabled() ? cancellable::checkCancelled: () -> {});
                 } catch (CollectionTerminatedException e) {
                     // collection was terminated prematurely
                     // continue with the following leaf
@@ -276,8 +298,8 @@ public class ContextIndexSearcher extends IndexSearcher implements Releasable {
         if (liveDocs instanceof SparseFixedBitSet) {
             return (BitSet) liveDocs;
         } else if (liveDocs instanceof CombinedBitSet
-                        // if the underlying role bitset is sparse
-                        && ((CombinedBitSet) liveDocs).getFirst() instanceof SparseFixedBitSet) {
+            // if the underlying role bitset is sparse
+            && ((CombinedBitSet) liveDocs).getFirst() instanceof SparseFixedBitSet) {
             return (BitSet) liveDocs;
         } else {
             return null;

@@ -116,10 +116,7 @@ public final class IndexOrDocValuesQuery extends Query {
     dvQuery.visit(v);
   }
 
-  @Override
-  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
-    final Weight indexWeight = indexQuery.createWeight(searcher, scoreMode, boost);
-    final Weight dvWeight = dvQuery.createWeight(searcher, scoreMode, boost);
+  public Weight createWeightHelper(IndexSearcher searcher, ScoreMode scoreMode, float boost, Weight indexWeight, Weight dvWeight) throws IOException{
     return new Weight(this) {
       @Override
       public void extractTerms(Set<Term> terms) {
@@ -191,6 +188,19 @@ public final class IndexOrDocValuesQuery extends Query {
       }
 
     };
+  }
+  @Override
+  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+    final Weight indexWeight = indexQuery.createWeight(searcher, scoreMode, boost);
+    final Weight dvWeight = dvQuery.createWeight(searcher, scoreMode, boost);
+    return createWeightHelper(searcher, scoreMode, boost, indexWeight, dvWeight);
+  }
+
+  @Override
+  public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+    final Weight indexWeight = indexQuery.addFieldNameBeforeCreateWeight(searcher, scoreMode, boost);
+    final Weight dvWeight = dvQuery.addFieldNameBeforeCreateWeight(searcher, scoreMode, boost);
+    return createWeightHelper(searcher, scoreMode, boost, indexWeight, dvWeight);
   }
 
 }

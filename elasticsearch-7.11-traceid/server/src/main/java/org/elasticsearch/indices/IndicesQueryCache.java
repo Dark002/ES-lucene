@@ -44,7 +44,7 @@ public class IndicesQueryCache implements QueryCache, Closeable {
     private static final Logger logger = LogManager.getLogger(IndicesQueryCache.class);
 
     public static final Setting<ByteSizeValue> INDICES_CACHE_QUERY_SIZE_SETTING =
-            Setting.memorySizeSetting("indices.queries.cache.size", "10%", Property.NodeScope);
+            Setting.memorySizeSetting("indices.queries.cache.size", "0%", Property.NodeScope);
     // mostly a way to prevent queries from being the main source of memory usage
     // of the cache
     public static final Setting<Integer> INDICES_CACHE_QUERY_COUNT_SETTING =

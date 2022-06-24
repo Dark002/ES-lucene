@@ -131,7 +131,7 @@ public class MultiPhraseQuery extends Query {
       for (Term term : terms) {
         if (!term.field().equals(field)) {
           throw new IllegalArgumentException(
-              "All phrase terms must be in the same field (" + field + "): " + term);
+                  "All phrase terms must be in the same field (" + field + "): " + term);
         }
       }
 
@@ -244,9 +244,9 @@ public class MultiPhraseQuery extends Query {
           return null; // none of the terms were found, we won't use sim at all
         } else {
           return similarity.scorer(
-              boost,
-              searcher.collectionStatistics(field),
-              allTermStats.toArray(new TermStatistics[allTermStats.size()]));
+                  boost,
+                  searcher.collectionStatistics(field),
+                  allTermStats.toArray(new TermStatistics[allTermStats.size()]));
         }
       }
 
@@ -265,7 +265,7 @@ public class MultiPhraseQuery extends Query {
         // TODO: move this check to createWeight to happen earlier to the user?
         if (fieldTerms.hasPositions() == false) {
           throw new IllegalStateException("field \"" + field + "\" was indexed without position data;" +
-              " cannot run MultiPhraseQuery (phrase=" + getQuery() + ")");
+                  " cannot run MultiPhraseQuery (phrase=" + getQuery() + ")");
         }
 
         // Reuse single TermsEnum below:
@@ -319,6 +319,17 @@ public class MultiPhraseQuery extends Query {
     };
   }
 
+  @Override
+  public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+    final String threadName = Thread.currentThread().getName();
+    try {
+      Thread.currentThread().setName(threadName + "_Field:_" + field);
+      return createWeight(searcher, scoreMode, boost);
+    } finally {
+      Thread.currentThread().setName(threadName);
+    }
+  }
+
   /** Prints a user-readable version of this query. */
   @Override
   public final String toString(String f) {
@@ -368,13 +379,13 @@ public class MultiPhraseQuery extends Query {
   @Override
   public boolean equals(Object other) {
     return sameClassAs(other) &&
-           equalsTo(getClass().cast(other));
+            equalsTo(getClass().cast(other));
   }
 
   private boolean equalsTo(MultiPhraseQuery other) {
-    return this.slop == other.slop && 
-           termArraysEquals(this.termArrays, other.termArrays) && /* terms equal implies field equal */ 
-           Arrays.equals(this.positions, other.positions);
+    return this.slop == other.slop &&
+            termArraysEquals(this.termArrays, other.termArrays) && /* terms equal implies field equal */
+            Arrays.equals(this.positions, other.positions);
 
   }
 
@@ -382,9 +393,9 @@ public class MultiPhraseQuery extends Query {
   @Override
   public int hashCode() {
     return classHash()
-      ^ slop
-      ^ termArraysHashCode() // terms equal implies field equal
-      ^ Arrays.hashCode(positions);
+            ^ slop
+            ^ termArraysHashCode() // terms equal implies field equal
+            ^ Arrays.hashCode(positions);
   }
 
   // Breakout calculation of the termArrays hashcode
@@ -392,7 +403,7 @@ public class MultiPhraseQuery extends Query {
     int hashCode = 1;
     for (final Term[] termArray: termArrays) {
       hashCode = 31 * hashCode
-          + (termArray == null ? 0 : Arrays.hashCode(termArray));
+              + (termArray == null ? 0 : Arrays.hashCode(termArray));
     }
     return hashCode;
   }
@@ -407,7 +418,7 @@ public class MultiPhraseQuery extends Query {
       Term[] termArray1 = termArrays1[i];
       Term[] termArray2 = termArrays2[i];
       if (!(termArray1 == null ? termArray2 == null : Arrays.equals(termArray1,
-          termArray2))) {
+              termArray2))) {
         return false;
       }
     }

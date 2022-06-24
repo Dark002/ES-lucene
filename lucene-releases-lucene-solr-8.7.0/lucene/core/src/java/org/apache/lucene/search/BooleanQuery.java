@@ -36,9 +36,9 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.BooleanClause.Occur;
 
 /** A Query that matches documents matching boolean combinations of other
-  * queries, e.g. {@link TermQuery}s, {@link PhraseQuery}s or other
-  * BooleanQuerys.
-  */
+ * queries, e.g. {@link TermQuery}s, {@link PhraseQuery}s or other
+ * BooleanQuerys.
+ */
 public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
   private static int maxClauseCount = 1024;
@@ -61,7 +61,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
    */
   public static int getMaxClauseCount() { return maxClauseCount; }
 
-  /** 
+  /**
    * Set the maximum number of clauses permitted per BooleanQuery.
    * Default value is 1024.
    */
@@ -140,7 +140,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   private final Map<Occur, Collection<Query>> clauseSets; // used for equals/hashcode
 
   private BooleanQuery(int minimumNumberShouldMatch,
-      BooleanClause[] clauses) {
+                       BooleanClause[] clauses) {
     this.minimumNumberShouldMatch = minimumNumberShouldMatch;
     this.clauses = Collections.unmodifiableList(Arrays.asList(clauses));
     clauseSets = new EnumMap<>(Occur.class);
@@ -179,7 +179,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
    */
   boolean isPureDisjunction() {
     return clauses.size() == getClauses(Occur.SHOULD).size()
-        && minimumNumberShouldMatch <= 1;
+            && minimumNumberShouldMatch <= 1;
   }
 
   /** Returns an iterator on the clauses in this query. It implements the {@link Iterable} interface to
@@ -193,7 +193,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
   private BooleanQuery rewriteNoScoring() {
     boolean keepShould = getMinimumNumberShouldMatch() > 0
-        || (clauseSets.get(Occur.MUST).size() + clauseSets.get(Occur.FILTER).size() == 0);
+            || (clauseSets.get(Occur.MUST).size() + clauseSets.get(Occur.FILTER).size() == 0);
 
     if (clauseSets.get(Occur.MUST).size() == 0 && keepShould) {
       return this;
@@ -232,11 +232,20 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   }
 
   @Override
+  public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+    BooleanQuery query = this;
+    if (scoreMode.needsScores() == false) {
+      query = rewriteNoScoring();
+    }
+    return new BooleanWeight(query, searcher, scoreMode, boost, false);
+  }
+
+  @Override
   public Query rewrite(IndexReader reader) throws IOException {
     if (clauses.size() == 0) {
       return new MatchNoDocsQuery("empty BooleanQuery");
     }
-    
+
     // optimize 1-clause queries
     if (clauses.size() == 1) {
       BooleanClause c = clauses.get(0);
@@ -380,7 +389,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
       if (shouldClauses.size() != clauseSets.get(Occur.SHOULD).size()) {
         BooleanQuery.Builder builder = new BooleanQuery.Builder()
-            .setMinimumNumberShouldMatch(minimumNumberShouldMatch);
+                .setMinimumNumberShouldMatch(minimumNumberShouldMatch);
         for (Map.Entry<Query,Double> entry : shouldClauses.entrySet()) {
           Query query = entry.getKey();
           float boost = entry.getValue().floatValue();
@@ -412,7 +421,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
       if (mustClauses.size() != clauseSets.get(Occur.MUST).size()) {
         BooleanQuery.Builder builder = new BooleanQuery.Builder()
-            .setMinimumNumberShouldMatch(minimumNumberShouldMatch);
+                .setMinimumNumberShouldMatch(minimumNumberShouldMatch);
         for (Map.Entry<Query,Double> entry : mustClauses.entrySet()) {
           Query query = entry.getKey();
           float boost = entry.getValue().floatValue();
@@ -436,7 +445,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       final Collection<Query> musts = clauseSets.get(Occur.MUST);
       final Collection<Query> filters = clauseSets.get(Occur.FILTER);
       if (musts.size() == 1
-          && filters.size() > 0) {
+              && filters.size() > 0) {
         Query must = musts.iterator().next();
         float boost = 1f;
         if (must instanceof BoostQuery) {
@@ -467,8 +476,8 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
           // now add back the SHOULD clauses
           builder = new BooleanQuery.Builder()
-            .setMinimumNumberShouldMatch(getMinimumNumberShouldMatch())
-            .add(rewritten, Occur.MUST);
+                  .setMinimumNumberShouldMatch(getMinimumNumberShouldMatch())
+                  .add(rewritten, Occur.MUST);
           for (Query query : clauseSets.get(Occur.SHOULD)) {
             builder.add(query, Occur.SHOULD);
           }
@@ -585,12 +594,12 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   @Override
   public boolean equals(Object o) {
     return sameClassAs(o) &&
-           equalsTo(getClass().cast(o));
+            equalsTo(getClass().cast(o));
   }
 
   private boolean equalsTo(BooleanQuery other) {
-    return getMinimumNumberShouldMatch() == other.getMinimumNumberShouldMatch() && 
-           clauseSets.equals(other.clauseSets);
+    return getMinimumNumberShouldMatch() == other.getMinimumNumberShouldMatch() &&
+            clauseSets.equals(other.clauseSets);
   }
 
   private int computeHashCode() {

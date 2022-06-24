@@ -81,7 +81,7 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
    * Wrap a {@link MultiTermQuery} as a Filter.
    */
   protected MultiTermQueryConstantScoreWrapper(Q query) {
-      this.query = query;
+    this.query = query;
   }
 
   @Override
@@ -93,7 +93,7 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
   @Override
   public final boolean equals(final Object other) {
     return sameClassAs(other) &&
-           query.equals(((MultiTermQueryConstantScoreWrapper<?>) other).query);
+            query.equals(((MultiTermQueryConstantScoreWrapper<?>) other).query);
   }
 
   @Override
@@ -103,7 +103,7 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
 
   /** Returns the encapsulated query */
   public Q getQuery() { return query; }
-  
+
   /** Returns the field name for this query */
   public final String getField() { return query.getField(); }
 
@@ -230,6 +230,18 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
       }
 
     };
+  }
+
+  @Override
+  public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+    final String threadName = Thread.currentThread().getName();
+    try {
+      Thread.currentThread().setName(threadName + "_Field:_" + query.field);
+      return createWeight(searcher, scoreMode, boost);
+    } finally {
+//      System.out.println(Thread.currentThread().getName());
+      Thread.currentThread().setName(threadName);
+    }
   }
 
   @Override

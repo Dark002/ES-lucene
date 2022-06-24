@@ -48,7 +48,7 @@ public class TermQuery extends Query {
     private final ScoreMode scoreMode;
 
     public TermWeight(IndexSearcher searcher, ScoreMode scoreMode,
-        float boost, TermStates termStates) throws IOException {
+                      float boost, TermStates termStates) throws IOException {
       super(TermQuery.this);
       if (scoreMode.needsScores() && termStates == null) {
         throw new IllegalStateException("termStates are required when scores are needed");
@@ -67,7 +67,7 @@ public class TermQuery extends Query {
         collectionStats = new CollectionStatistics(term.field(), 1, 1, 1, 1);
         termStats = new TermStatistics(term.bytes(), 1, 1);
       }
-     
+
       if (termStats == null) {
         this.simScorer = null; // term doesn't exist in any segment, we won't use similarity at all
       } else {
@@ -130,7 +130,7 @@ public class TermQuery extends Query {
     private TermsEnum getTermsEnum(LeafReaderContext context) throws IOException {
       assert termStates != null;
       assert termStates.wasBuiltFor(ReaderUtil.getTopLevelContext(context)) :
-          "The top-reader used to create Weight is not the same as the current reader's top-reader (" + ReaderUtil.getTopLevelContext(context);
+              "The top-reader used to create Weight is not the same as the current reader's top-reader (" + ReaderUtil.getTopLevelContext(context);
       final TermState state = termStates.get(context);
       if (state == null) { // term is not present in that reader
         assert termNotInReader(context.reader(), term) : "no termstate found but term exists in reader term=" + term;
@@ -159,10 +159,10 @@ public class TermQuery extends Query {
           Explanation freqExplanation = Explanation.match(freq, "freq, occurrences of term within document");
           Explanation scoreExplanation = docScorer.explain(doc, freqExplanation);
           return Explanation.match(
-              scoreExplanation.getValue(),
-              "weight(" + getQuery() + " in " + doc + ") ["
-                  + similarity.getClass().getSimpleName() + "], result of:",
-              scoreExplanation);
+                  scoreExplanation.getValue(),
+                  "weight(" + getQuery() + " in " + doc + ") ["
+                          + similarity.getClass().getSimpleName() + "], result of:",
+                  scoreExplanation);
         }
       }
       return Explanation.noMatch("no matching term");
@@ -195,15 +195,21 @@ public class TermQuery extends Query {
     final IndexReaderContext context = searcher.getTopReaderContext();
     final TermStates termState;
     if (perReaderTermState == null
-        || perReaderTermState.wasBuiltFor(context) == false) {
+            || perReaderTermState.wasBuiltFor(context) == false) {
       termState = TermStates.build(context, term, scoreMode.needsScores());
     } else {
       // PRTS was pre-build for this IS
       termState = this.perReaderTermState;
     }
-
     return new TermWeight(searcher, scoreMode, boost, termState);
   }
+
+  @Override
+  public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+    Thread.currentThread().setName(Thread.currentThread().getName()+this.getTerm().field());
+    return this.createWeight(searcher, scoreMode, boost);
+  }
+
 
   @Override
   public void visit(QueryVisitor visitor) {
@@ -235,7 +241,7 @@ public class TermQuery extends Query {
   @Override
   public boolean equals(Object other) {
     return sameClassAs(other) &&
-           term.equals(((TermQuery) other).term);
+            term.equals(((TermQuery) other).term);
   }
 
   @Override

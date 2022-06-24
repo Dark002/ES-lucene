@@ -60,7 +60,26 @@ final class BooleanWeight extends Weight {
     this.similarity = searcher.getSimilarity();
     weightedClauses = new ArrayList<>();
     for (BooleanClause c : query) {
-      Weight w = searcher.createWeight(c.getQuery(), c.isScoring() ? scoreMode : ScoreMode.COMPLETE_NO_SCORES, boost);
+      Weight w = searcher.createWeight(c.getQuery(), c.isScoring() ? scoreMode : ScoreMode.COMPLETE_NO_SCORES, boost, true);
+      weightedClauses.add(new WeightedBooleanClause(c, w));
+    }
+  }
+
+  BooleanWeight(BooleanQuery query, IndexSearcher searcher, ScoreMode scoreMode, float boost, boolean fieldAdded) throws IOException {
+    super(query);
+    this.query = query;
+    this.scoreMode = scoreMode;
+    this.similarity = searcher.getSimilarity();
+    weightedClauses = new ArrayList<>();
+    int flag=0;
+    for (BooleanClause c : query) {
+      Query q = c.getQuery();
+      Weight w;
+      if(flag==0) {
+        w = searcher.createWeight(c.getQuery(), c.isScoring() ? scoreMode : ScoreMode.COMPLETE_NO_SCORES, boost, fieldAdded);
+        flag=1;
+      }
+      else w = searcher.createWeight(c.getQuery(), c.isScoring() ? scoreMode : ScoreMode.COMPLETE_NO_SCORES, boost, true);
       weightedClauses.add(new WeightedBooleanClause(c, w));
     }
   }
@@ -90,7 +109,7 @@ final class BooleanWeight extends Weight {
           subs.add(e);
         } else if (c.isRequired()) {
           subs.add(Explanation.match(0f, "match on required clause, product of:",
-              Explanation.match(0f, Occur.FILTER + " clause"), e));
+                  Explanation.match(0f, Occur.FILTER + " clause"), e));
         } else if (c.isProhibited()) {
           subs.add(Explanation.noMatch("match on prohibited clause (" + c.getQuery().toString() + ")", e));
           fail = true;
@@ -252,7 +271,7 @@ final class BooleanWeight extends Weight {
   BulkScorer booleanScorer(LeafReaderContext context) throws IOException {
     final int numOptionalClauses = query.getClauses(Occur.SHOULD).size();
     final int numRequiredClauses = query.getClauses(Occur.MUST).size() + query.getClauses(Occur.FILTER).size();
-    
+
     BulkScorer positiveScorer;
     if (numRequiredClauses == 0) {
       positiveScorer = optionalBulkScorer(context);
@@ -282,8 +301,8 @@ final class BooleanWeight extends Weight {
       }
 
     } else if (numRequiredClauses == 1
-        && numOptionalClauses == 0
-        && query.getMinimumNumberShouldMatch() == 0) {
+            && numOptionalClauses == 0
+            && query.getMinimumNumberShouldMatch() == 0) {
       positiveScorer = requiredBulkScorer(context);
     } else {
       // TODO: there are some cases where BooleanScorer
@@ -312,8 +331,8 @@ final class BooleanWeight extends Weight {
       return positiveScorer;
     } else {
       Scorer prohibitedScorer = prohibited.size() == 1
-          ? prohibited.get(0)
-          : new DisjunctionSumScorer(this, prohibited, ScoreMode.COMPLETE_NO_SCORES);
+              ? prohibited.get(0)
+              : new DisjunctionSumScorer(this, prohibited, ScoreMode.COMPLETE_NO_SCORES);
       if (prohibitedScorer.twoPhaseIterator() != null) {
         // ReqExclBulkScorer can't deal efficiently with two-phased prohibited clauses
         return null;
@@ -387,14 +406,14 @@ final class BooleanWeight extends Weight {
     }
 
     // scorer simplifications:
-    
+
     if (scorers.get(Occur.SHOULD).size() == minShouldMatch) {
       // any optional clauses are in fact required
       scorers.get(Occur.MUST).addAll(scorers.get(Occur.SHOULD));
       scorers.get(Occur.SHOULD).clear();
       minShouldMatch = 0;
     }
-    
+
     if (scorers.get(Occur.FILTER).isEmpty() && scorers.get(Occur.MUST).isEmpty() && scorers.get(Occur.SHOULD).isEmpty()) {
       // no required and optional clauses.
       return null;

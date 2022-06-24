@@ -63,12 +63,12 @@ public final class BoostQuery extends Query {
   @Override
   public boolean equals(Object other) {
     return sameClassAs(other) &&
-           equalsTo(getClass().cast(other));
+            equalsTo(getClass().cast(other));
   }
-  
+
   private boolean equalsTo(BoostQuery other) {
-    return query.equals(other.query) && 
-           Float.floatToIntBits(boost) == Float.floatToIntBits(other.boost);
+    return query.equals(other.query) &&
+            Float.floatToIntBits(boost) == Float.floatToIntBits(other.boost);
   }
 
   @Override
@@ -125,4 +125,8 @@ public final class BoostQuery extends Query {
     return query.createWeight(searcher, scoreMode, BoostQuery.this.boost * boost);
   }
 
+  @Override
+  public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+    return query.addFieldNameBeforeCreateWeight(searcher, scoreMode, BoostQuery.this.boost * boost);
+  }
 }

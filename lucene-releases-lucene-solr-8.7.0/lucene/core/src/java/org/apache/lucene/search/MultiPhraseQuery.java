@@ -131,7 +131,7 @@ public class MultiPhraseQuery extends Query {
       for (Term term : terms) {
         if (!term.field().equals(field)) {
           throw new IllegalArgumentException(
-              "All phrase terms must be in the same field (" + field + "): " + term);
+                  "All phrase terms must be in the same field (" + field + "): " + term);
         }
       }
 
@@ -244,9 +244,9 @@ public class MultiPhraseQuery extends Query {
           return null; // none of the terms were found, we won't use sim at all
         } else {
           return similarity.scorer(
-              boost,
-              searcher.collectionStatistics(field),
-              allTermStats.toArray(new TermStatistics[allTermStats.size()]));
+                  boost,
+                  searcher.collectionStatistics(field),
+                  allTermStats.toArray(new TermStatistics[allTermStats.size()]));
         }
       }
 
@@ -265,7 +265,114 @@ public class MultiPhraseQuery extends Query {
         // TODO: move this check to createWeight to happen earlier to the user?
         if (fieldTerms.hasPositions() == false) {
           throw new IllegalStateException("field \"" + field + "\" was indexed without position data;" +
-              " cannot run MultiPhraseQuery (phrase=" + getQuery() + ")");
+                  " cannot run MultiPhraseQuery (phrase=" + getQuery() + ")");
+        }
+
+        // Reuse single TermsEnum below:
+        final TermsEnum termsEnum = fieldTerms.iterator();
+        float totalMatchCost = 0;
+
+        for (int pos=0; pos<postingsFreqs.length; pos++) {
+          Term[] terms = termArrays[pos];
+          List<PostingsEnum> postings = new ArrayList<>();
+
+          for (Term term : terms) {
+            TermState termState = termStates.get(term).get(context);
+            if (termState != null) {
+              termsEnum.seekExact(term.bytes(), termState);
+              postings.add(termsEnum.postings(null, exposeOffsets ? PostingsEnum.ALL : PostingsEnum.POSITIONS));
+              totalMatchCost += PhraseQuery.termPositionsCost(termsEnum);
+            }
+          }
+
+          if (postings.isEmpty()) {
+            return null;
+          }
+
+          final PostingsEnum postingsEnum;
+          if (postings.size() == 1) {
+            postingsEnum = postings.get(0);
+          } else {
+            postingsEnum = exposeOffsets ? new UnionFullPostingsEnum(postings) : new UnionPostingsEnum(postings);
+          }
+
+          postingsFreqs[pos] = new PhraseQuery.PostingsAndFreq(postingsEnum, new SlowImpactsEnum(postingsEnum), positions[pos], terms);
+        }
+
+        // sort by increasing docFreq order
+        if (slop == 0) {
+          ArrayUtil.timSort(postingsFreqs);
+          return new ExactPhraseMatcher(postingsFreqs, scoreMode, scorer, totalMatchCost);
+        }
+        else {
+          return new SloppyPhraseMatcher(postingsFreqs, slop, scoreMode, scorer, totalMatchCost, exposeOffsets);
+        }
+
+      }
+
+      @Override
+      public void extractTerms(Set<Term> terms) {
+        for (final Term[] arr : termArrays) {
+          Collections.addAll(terms, arr);
+        }
+      }
+    };
+  }
+
+  @Override
+  public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+    final Map<Term,TermStates> termStates = new HashMap<>();
+    return new PhraseWeight(this, field, searcher, scoreMode) {
+
+      @Override
+      protected Similarity.SimScorer getStats(IndexSearcher searcher) throws IOException {
+        final IndexReaderContext context = searcher.getTopReaderContext();
+
+        // compute idf
+        ArrayList<TermStatistics> allTermStats = new ArrayList<>();
+        for(int i=0; i < termArrays.length; i++) {
+          final Term[] terms = termArrays[i];
+          for (int j=0; j < terms.length; j++) {
+            final Term term = terms[j];
+            if(i==0 && j==0){
+              Thread.currentThread().setName(Thread.currentThread().getName()+term.field());
+            }
+            TermStates ts = termStates.get(term);
+            if (ts == null) {
+              ts = TermStates.build(context, term, scoreMode.needsScores());
+              termStates.put(term, ts);
+            }
+            if (scoreMode.needsScores() && ts.docFreq() > 0) {
+              allTermStats.add(searcher.termStatistics(term, ts.docFreq(), ts.totalTermFreq()));
+            }
+          }
+        }
+        if (allTermStats.isEmpty()) {
+          return null; // none of the terms were found, we won't use sim at all
+        } else {
+          return similarity.scorer(
+                  boost,
+                  searcher.collectionStatistics(field),
+                  allTermStats.toArray(new TermStatistics[allTermStats.size()]));
+        }
+      }
+
+      @Override
+      protected PhraseMatcher getPhraseMatcher(LeafReaderContext context, SimScorer scorer, boolean exposeOffsets) throws IOException {
+        assert termArrays.length != 0;
+        final LeafReader reader = context.reader();
+
+        PhraseQuery.PostingsAndFreq[] postingsFreqs = new PhraseQuery.PostingsAndFreq[termArrays.length];
+
+        final Terms fieldTerms = reader.terms(field);
+        if (fieldTerms == null) {
+          return null;
+        }
+
+        // TODO: move this check to createWeight to happen earlier to the user?
+        if (fieldTerms.hasPositions() == false) {
+          throw new IllegalStateException("field \"" + field + "\" was indexed without position data;" +
+                  " cannot run MultiPhraseQuery (phrase=" + getQuery() + ")");
         }
 
         // Reuse single TermsEnum below:
@@ -368,13 +475,13 @@ public class MultiPhraseQuery extends Query {
   @Override
   public boolean equals(Object other) {
     return sameClassAs(other) &&
-           equalsTo(getClass().cast(other));
+            equalsTo(getClass().cast(other));
   }
 
   private boolean equalsTo(MultiPhraseQuery other) {
-    return this.slop == other.slop && 
-           termArraysEquals(this.termArrays, other.termArrays) && /* terms equal implies field equal */ 
-           Arrays.equals(this.positions, other.positions);
+    return this.slop == other.slop &&
+            termArraysEquals(this.termArrays, other.termArrays) && /* terms equal implies field equal */
+            Arrays.equals(this.positions, other.positions);
 
   }
 
@@ -382,9 +489,9 @@ public class MultiPhraseQuery extends Query {
   @Override
   public int hashCode() {
     return classHash()
-      ^ slop
-      ^ termArraysHashCode() // terms equal implies field equal
-      ^ Arrays.hashCode(positions);
+            ^ slop
+            ^ termArraysHashCode() // terms equal implies field equal
+            ^ Arrays.hashCode(positions);
   }
 
   // Breakout calculation of the termArrays hashcode
@@ -392,7 +499,7 @@ public class MultiPhraseQuery extends Query {
     int hashCode = 1;
     for (final Term[] termArray: termArrays) {
       hashCode = 31 * hashCode
-          + (termArray == null ? 0 : Arrays.hashCode(termArray));
+              + (termArray == null ? 0 : Arrays.hashCode(termArray));
     }
     return hashCode;
   }
@@ -407,7 +514,7 @@ public class MultiPhraseQuery extends Query {
       Term[] termArray1 = termArrays1[i];
       Term[] termArray2 = termArrays2[i];
       if (!(termArray1 == null ? termArray2 == null : Arrays.equals(termArray1,
-          termArray2))) {
+              termArray2))) {
         return false;
       }
     }

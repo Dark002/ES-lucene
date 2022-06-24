@@ -48,7 +48,7 @@ public final class NormsFieldExistsQuery extends Query {
   @Override
   public boolean equals(Object other) {
     return sameClassAs(other) &&
-           field.equals(((NormsFieldExistsQuery) other).field);
+            field.equals(((NormsFieldExistsQuery) other).field);
   }
 
   @Override
@@ -88,5 +88,11 @@ public final class NormsFieldExistsQuery extends Query {
         return true;
       }
     };
+  }
+
+  @Override
+  public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+    Thread.currentThread().setName(Thread.currentThread().getName() + field);
+    return this.createWeight(searcher, scoreMode, boost);
   }
 }

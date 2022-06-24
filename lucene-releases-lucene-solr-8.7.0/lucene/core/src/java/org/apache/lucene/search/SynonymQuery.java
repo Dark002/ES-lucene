@@ -135,7 +135,7 @@ public final class SynonymQuery extends Query {
     Arrays.sort(this.terms);
     this.field = field;
   }
-  
+
   /**
    * Creates a new SynonymQuery, matching any of the supplied terms.
    * <p>
@@ -148,12 +148,12 @@ public final class SynonymQuery extends Query {
 
   public List<Term> getTerms() {
     return Collections.unmodifiableList(
-        Arrays.stream(terms)
-            .map(TermAndBoost::getTerm)
-            .collect(Collectors.toList())
+            Arrays.stream(terms)
+                    .map(TermAndBoost::getTerm)
+                    .collect(Collectors.toList())
     );
   }
-  
+
   @Override
   public String toString(String field) {
     StringBuilder builder = new StringBuilder("Synonym(");
@@ -180,7 +180,7 @@ public final class SynonymQuery extends Query {
   @Override
   public boolean equals(Object other) {
     return sameClassAs(other)
-        && Arrays.equals(terms, ((SynonymQuery) other).terms);
+            && Arrays.equals(terms, ((SynonymQuery) other).terms);
   }
 
   @Override
@@ -218,7 +218,22 @@ public final class SynonymQuery extends Query {
       return searcher.rewrite(bq.build()).createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, boost);
     }
   }
-  
+
+
+  @Override
+  public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+    if (scoreMode.needsScores()) {
+      return new SynonymWeight(this, searcher, scoreMode, boost, false);
+    } else {
+      // if scores are not needed, let BooleanWeight deal with optimizing that case.
+      BooleanQuery.Builder bq = new BooleanQuery.Builder();
+      for (TermAndBoost term : terms) {
+        bq.add(new TermQuery(term.term), BooleanClause.Occur.SHOULD);
+      }
+      return searcher.rewrite(bq.build()).addFieldNameBeforeCreateWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, boost);
+    }
+  }
+
   class SynonymWeight extends Weight {
     private final TermStates termStates[];
     private final Similarity similarity;
@@ -251,6 +266,35 @@ public final class SynonymQuery extends Query {
       }
     }
 
+    SynonymWeight(Query query, IndexSearcher searcher, ScoreMode scoreMode, float boost, boolean fieldAdded) throws IOException {
+      super(query);
+      assert scoreMode.needsScores();
+      this.scoreMode = scoreMode;
+      CollectionStatistics collectionStats = searcher.collectionStatistics(terms[0].term.field());
+      long docFreq = 0;
+      long totalTermFreq = 0;
+      termStates = new TermStates[terms.length];
+      for (int i = 0; i < termStates.length; i++) {
+        if(i==0){
+          Thread.currentThread().setName(Thread.currentThread().getName()+terms[i].term.field());
+        }
+        TermStates ts =  TermStates.build(searcher.getTopReaderContext(), terms[i].term, true);
+        termStates[i] = ts;
+        if (ts.docFreq() > 0) {
+          TermStatistics termStats = searcher.termStatistics(terms[i].term, ts.docFreq(), ts.totalTermFreq());
+          docFreq = Math.max(termStats.docFreq(), docFreq);
+          totalTermFreq += termStats.totalTermFreq();
+        }
+      }
+      this.similarity = searcher.getSimilarity();
+      if (docFreq > 0) {
+        TermStatistics pseudoStats = new TermStatistics(new BytesRef("synonym pseudo-term"), docFreq, totalTermFreq);
+        this.simWeight = similarity.scorer(boost, collectionStats, pseudoStats);
+      } else {
+        this.simWeight = null; // no terms exist at all, we won't use similarity
+      }
+    }
+
     @Override
     public void extractTerms(Set<Term> terms) {
       for (TermAndBoost term : SynonymQuery.this.terms) {
@@ -266,8 +310,8 @@ public final class SynonymQuery extends Query {
         return super.matches(context, doc);
       }
       List<Term> termList = Arrays.stream(terms)
-          .map(TermAndBoost::getTerm)
-          .collect(Collectors.toList());
+              .map(TermAndBoost::getTerm)
+              .collect(Collectors.toList());
       return MatchesUtils.forField(field, () -> DisjunctionMatchesIterator.fromTerms(context, doc, getQuery(), field, termList));
     }
 
@@ -290,10 +334,10 @@ public final class SynonymQuery extends Query {
           Explanation freqExplanation = Explanation.match(freq, "termFreq=" + freq);
           Explanation scoreExplanation = docScorer.explain(doc, freqExplanation);
           return Explanation.match(
-              scoreExplanation.getValue(),
-              "weight(" + getQuery() + " in " + doc + ") ["
-                  + similarity.getClass().getSimpleName() + "], result of:",
-              scoreExplanation);
+                  scoreExplanation.getValue(),
+                  "weight(" + getQuery() + " in " + doc + ") ["
+                          + similarity.getClass().getSimpleName() + "], result of:",
+                  scoreExplanation);
         }
       }
       return Explanation.noMatch("no matching term");
@@ -459,9 +503,9 @@ public final class SynonymQuery extends Query {
                 if (boosts[i] != 1f) {
                   float boost = boosts[i];
                   impactList = impacts[i].getImpacts(impactsLevel)
-                      .stream()
-                      .map(impact -> new Impact((int) Math.ceil(impact.freq * boost), impact.norm))
-                      .collect(Collectors.toList());
+                          .stream()
+                          .map(impact -> new Impact((int) Math.ceil(impact.freq * boost), impact.norm))
+                          .collect(Collectors.toList());
                 } else {
                   impactList = impacts[i].getImpacts(impactsLevel);
                 }
@@ -548,7 +592,7 @@ public final class SynonymQuery extends Query {
     private final LeafSimScorer simScorer;
 
     SynonymScorer(Weight weight, DisiPriorityQueue queue, DocIdSetIterator iterator,
-        ImpactsDISI impactsDisi, LeafSimScorer simScorer) {
+                  ImpactsDISI impactsDisi, LeafSimScorer simScorer) {
       super(weight);
       this.queue = queue;
       this.iterator = iterator;
@@ -671,7 +715,7 @@ public final class SynonymQuery extends Query {
       if (o == null || getClass() != o.getClass()) return false;
       TermAndBoost that = (TermAndBoost) o;
       return Float.compare(that.boost, boost) == 0 &&
-          Objects.equals(term, that.term);
+              Objects.equals(term, that.term);
     }
 
     @Override

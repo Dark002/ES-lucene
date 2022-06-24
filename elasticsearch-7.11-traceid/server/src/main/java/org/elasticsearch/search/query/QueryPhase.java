@@ -120,14 +120,14 @@ public class QueryPhase {
 
     public void execute(SearchContext searchContext) throws QueryPhaseExecutionException {
         final String currThreadName = Thread.currentThread().getName();
-        if (searchContext.getDistributedTraceId() != null) {
-            Thread.currentThread().setName(currThreadName + "_traceid:" + searchContext.getDistributedTraceId());
-        }
-        try {
-            Thread.sleep(10000);
-        } catch (Exception e) {
+//        if (searchContext.getDistributedTraceId() != null) {
+//            Thread.currentThread().setName(currThreadName + "_traceid:" + searchContext.getDistributedTraceId());
+//        }
+//          try {
+//              Thread.sleep(2000);
+//          } catch (Exception e) {
 
-        }
+//          }
         try {
             if (searchContext.hasOnlySuggest()) {
                 suggestPhase.execute(searchContext);
@@ -158,7 +158,9 @@ public class QueryPhase {
                     .buildShardResults(searchContext.getProfilers());
                 searchContext.queryResult().profileResults(shardResults);
             }
+            System.out.println(Thread.currentThread().getName());
         } finally {
+//            System.out.println(currThreadName);
             Thread.currentThread().setName(currThreadName);
         }
     }
@@ -325,7 +327,7 @@ public class QueryPhase {
     }
 
     private static boolean searchWithCollector(SearchContext searchContext, ContextIndexSearcher searcher, Query query,
-            LinkedList<QueryCollectorContext> collectors, boolean hasFilterCollector, boolean timeoutSet) throws IOException {
+                                               LinkedList<QueryCollectorContext> collectors, boolean hasFilterCollector, boolean timeoutSet) throws IOException {
         // create the top docs collector last when the other collectors are known
         final TopDocsCollectorContext topDocsFactory = createTopDocsCollectorContext(searchContext, hasFilterCollector);
         // add the top docs collector, the first collector context in the chain
@@ -369,7 +371,7 @@ public class QueryPhase {
      * Absence of all other collectors and parameters allows us to use TopFieldCollector directly.
      */
     private static boolean searchWithCollectorManager(SearchContext searchContext, ContextIndexSearcher searcher, Query query,
-            CheckedConsumer<List<LeafReaderContext>, IOException> leafSorter, boolean timeoutSet) throws IOException {
+                                                      CheckedConsumer<List<LeafReaderContext>, IOException> leafSorter, boolean timeoutSet) throws IOException {
         final IndexReader reader = searchContext.searcher().getIndexReader();
         final int numHits = Math.min(searchContext.from() + searchContext.size(),  Math.max(1, reader.numDocs()));
         final SortAndFormats sortAndFormats = searchContext.sort();

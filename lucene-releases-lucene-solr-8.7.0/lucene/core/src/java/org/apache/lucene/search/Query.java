@@ -66,6 +66,10 @@ public abstract class Query {
     throw new UnsupportedOperationException("Query " + this + " does not implement createWeight");
   }
 
+  public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+    return createWeight(searcher, scoreMode, boost);
+  }
+
   /** Expert: called to re-write queries into primitive queries. For example,
    * a PrefixQuery will be rewritten into a BooleanQuery that consists
    * of TermQuerys.

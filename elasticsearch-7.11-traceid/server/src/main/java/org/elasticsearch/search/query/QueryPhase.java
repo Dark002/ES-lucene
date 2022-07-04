@@ -120,9 +120,9 @@ public class QueryPhase {
 
     public void execute(SearchContext searchContext) throws QueryPhaseExecutionException {
         final String currThreadName = Thread.currentThread().getName();
-        if (searchContext.getDistributedTraceId() != null) {
-            Thread.currentThread().setName(currThreadName + "_traceid:" + searchContext.getDistributedTraceId());
-        }
+//        if (searchContext.getDistributedTraceId() != null) {
+//            Thread.currentThread().setName(currThreadName + "_traceid:" + searchContext.getDistributedTraceId());
+//        }
 //          try {
 //              Thread.sleep(2000);
 //          } catch (Exception e) {
@@ -158,7 +158,7 @@ public class QueryPhase {
                     .buildShardResults(searchContext.getProfilers());
                 searchContext.queryResult().profileResults(shardResults);
             }
-//            System.out.println(Thread.currentThread().getName());
+            System.out.println(Thread.currentThread().getName());
         } finally {
 //            System.out.println(currThreadName);
             Thread.currentThread().setName(currThreadName);

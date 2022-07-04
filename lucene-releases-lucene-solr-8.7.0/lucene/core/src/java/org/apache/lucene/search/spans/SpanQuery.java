@@ -1,12 +1,4 @@
 /*
- * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License
- * 2.0 and the Server Side Public License, v 1; you may not use this file except
- * in compliance with, at your election, the Elastic License 2.0 or the Server
- * Side Public License, v 1.
- */
-
-/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -35,7 +27,6 @@ import org.apache.lucene.index.TermStates;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Weight;
 
 /** Base class for span-based queries. */
 public abstract class SpanQuery extends Query {
@@ -47,16 +38,6 @@ public abstract class SpanQuery extends Query {
 
   @Override
   public abstract SpanWeight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException;
-
-  public SpanWeight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException{
-    final String threadName = Thread.currentThread().getName();
-    try {
-      Thread.currentThread().setName(threadName + "_Field:_" + this.getField());
-      return createWeight(searcher, scoreMode, boost);
-    } finally {
-      Thread.currentThread().setName(threadName);
-    }
-  }
 
   /**
    * Build a map of terms to {@link TermStates}, for use in constructing SpanWeights

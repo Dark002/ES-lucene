@@ -1,12 +1,4 @@
 /*
- * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License
- * 2.0 and the Server Side Public License, v 1; you may not use this file except
- * in compliance with, at your election, the Elastic License 2.0 or the Server
- * Side Public License, v 1.
- */
-
-/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -114,8 +106,9 @@ public class NamedMatches implements Matches {
       this.in = in;
     }
 
-
-    public Weight createWeightHelper(IndexSearcher searcher, ScoreMode scoreMode, float boost, Weight w) throws IOException {
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+      Weight w = in.createWeight(searcher, scoreMode, boost);
       return new FilterWeight(w) {
         @Override
         public Matches matches(LeafReaderContext context, int doc) throws IOException {
@@ -127,20 +120,6 @@ public class NamedMatches implements Matches {
         }
       };
     }
-
-
-    @Override
-    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
-      Weight w = in.createWeight(searcher, scoreMode, boost);
-      return createWeightHelper(searcher, scoreMode, boost, w);
-    }
-
-    @Override
-    public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
-      Weight w = in.addFieldNameBeforeCreateWeight(searcher, scoreMode, boost);
-      return createWeightHelper(searcher, scoreMode, boost, w);
-    }
-
 
     @Override
     public Query rewrite(IndexReader reader) throws IOException {

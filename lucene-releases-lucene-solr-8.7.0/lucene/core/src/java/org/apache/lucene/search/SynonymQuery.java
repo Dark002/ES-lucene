@@ -1,12 +1,4 @@
 /*
- * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License
- * 2.0 and the Server Side Public License, v 1; you may not use this file except
- * in compliance with, at your election, the Elastic License 2.0 or the Server
- * Side Public License, v 1.
- */
-
-/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -284,13 +276,7 @@ public final class SynonymQuery extends Query {
       termStates = new TermStates[terms.length];
       for (int i = 0; i < termStates.length; i++) {
         if(i==0){
-          String currThreadName = Thread.currentThread().getName();
-          final int idx = currThreadName.indexOf(" Field Name: ");
-          if(idx != -1){
-            currThreadName = currThreadName.substring(0,idx);
-          }
-          currThreadName += " Field Name: " + terms[i].term.field();
-          Thread.currentThread().setName(currThreadName);
+          Thread.currentThread().setName(Thread.currentThread().getName()+terms[i].term.field());
         }
         TermStates ts =  TermStates.build(searcher.getTopReaderContext(), terms[i].term, true);
         termStates[i] = ts;

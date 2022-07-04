@@ -234,14 +234,9 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
 
   @Override
   public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
-    final String threadName = Thread.currentThread().getName();
-    try {
-      Thread.currentThread().setName(threadName + "_Field:_" + query.field);
-      return createWeight(searcher, scoreMode, boost);
-    } finally {
-//      System.out.println(Thread.currentThread().getName());
-      Thread.currentThread().setName(threadName);
-    }
+    Thread.currentThread().setName(Thread.currentThread().getName()+ query.field);
+//    System.out.println(Thread.currentThread().getName());
+    return createWeight(searcher, scoreMode, boost);
   }
 
   @Override

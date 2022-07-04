@@ -116,7 +116,10 @@ public final class IndexOrDocValuesQuery extends Query {
     dvQuery.visit(v);
   }
 
-  public Weight createWeightHelper(IndexSearcher searcher, ScoreMode scoreMode, float boost, Weight indexWeight, Weight dvWeight) throws IOException{
+  @Override
+  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+    final Weight indexWeight = indexQuery.createWeight(searcher, scoreMode, boost);
+    final Weight dvWeight = dvQuery.createWeight(searcher, scoreMode, boost);
     return new Weight(this) {
       @Override
       public void extractTerms(Set<Term> terms) {
@@ -189,18 +192,82 @@ public final class IndexOrDocValuesQuery extends Query {
 
     };
   }
-  @Override
-  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
-    final Weight indexWeight = indexQuery.createWeight(searcher, scoreMode, boost);
-    final Weight dvWeight = dvQuery.createWeight(searcher, scoreMode, boost);
-    return createWeightHelper(searcher, scoreMode, boost, indexWeight, dvWeight);
-  }
 
   @Override
   public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
     final Weight indexWeight = indexQuery.addFieldNameBeforeCreateWeight(searcher, scoreMode, boost);
     final Weight dvWeight = dvQuery.addFieldNameBeforeCreateWeight(searcher, scoreMode, boost);
-    return createWeightHelper(searcher, scoreMode, boost, indexWeight, dvWeight);
+    return new Weight(this) {
+      @Override
+      public void extractTerms(Set<Term> terms) {
+        indexWeight.extractTerms(terms);
+      }
+
+      @Override
+      public Matches matches(LeafReaderContext context, int doc) throws IOException {
+        // We need to check a single doc, so the dv query should perform better
+        return dvWeight.matches(context, doc);
+      }
+
+      @Override
+      public Explanation explain(LeafReaderContext context, int doc) throws IOException {
+        // We need to check a single doc, so the dv query should perform better
+        return dvWeight.explain(context, doc);
+      }
+
+      @Override
+      public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
+        // Bulk scorers need to consume the entire set of docs, so using an
+        // index structure should perform better
+        return indexWeight.bulkScorer(context);
+      }
+
+      @Override
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        final ScorerSupplier indexScorerSupplier = indexWeight.scorerSupplier(context);
+        final ScorerSupplier dvScorerSupplier = dvWeight.scorerSupplier(context);
+        if (indexScorerSupplier == null || dvScorerSupplier == null) {
+          return null;
+        }
+        return new ScorerSupplier() {
+          @Override
+          public Scorer get(long leadCost) throws IOException {
+            // At equal costs, doc values tend to be worse than points since they
+            // still need to perform one comparison per document while points can
+            // do much better than that given how values are organized. So we give
+            // an arbitrary 8x penalty to doc values.
+            final long threshold = cost() >>> 3;
+            if (threshold <= leadCost) {
+              return indexScorerSupplier.get(leadCost);
+            } else {
+              return dvScorerSupplier.get(leadCost);
+            }
+          }
+
+          @Override
+          public long cost() {
+            return indexScorerSupplier.cost();
+          }
+        };
+      }
+
+      @Override
+      public Scorer scorer(LeafReaderContext context) throws IOException {
+        ScorerSupplier scorerSupplier = scorerSupplier(context);
+        if (scorerSupplier == null) {
+          return null;
+        }
+        return scorerSupplier.get(Long.MAX_VALUE);
+      }
+
+      @Override
+      public boolean isCacheable(LeafReaderContext ctx) {
+        // Both index and dv query should return the same values, so we can use
+        // the index query's cachehelper here
+        return indexWeight.isCacheable(ctx);
+      }
+
+    };
   }
 
 }

@@ -1,12 +1,4 @@
 /*
- * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License
- * 2.0 and the Server Side Public License, v 1; you may not use this file except
- * in compliance with, at your election, the Elastic License 2.0 or the Server
- * Side Public License, v 1.
- */
-
-/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -373,16 +365,5 @@ public class TermInSetQuery extends Query implements Accountable {
       }
 
     };
-  }
-
-  @Override
-  public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
-    final String threadName = Thread.currentThread().getName();
-    try {
-      Thread.currentThread().setName(threadName + "_Field:_" + field);
-      return createWeight(searcher, scoreMode, boost);
-    } finally {
-      Thread.currentThread().setName(threadName);
-    }
   }
 }

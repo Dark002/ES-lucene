@@ -1,12 +1,4 @@
 /*
- * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License
- * 2.0 and the Server Side Public License, v 1; you may not use this file except
- * in compliance with, at your election, the Elastic License 2.0 or the Server
- * Side Public License, v 1.
- */
-
-/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -119,14 +111,6 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
       this.scoreMode = scoreMode;
     }
 
-    public DisjunctionMaxWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost, boolean fieldAdded) throws IOException {
-      super(DisjunctionMaxQuery.this);
-      for (Query disjunctQuery : disjuncts) {
-        weights.add(searcher.createWeight(disjunctQuery, scoreMode, boost, false));
-      }
-      this.scoreMode = scoreMode;
-    }
-
     @Override
     public void extractTerms(Set<Term> terms) {
       for (Weight weight : weights) {
@@ -219,10 +203,6 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
     return new DisjunctionMaxWeight(searcher, scoreMode, boost);
-  }
-
-  public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
-    return new DisjunctionMaxWeight(searcher, scoreMode, boost, false);
   }
 
   /** Optimize our representation and our subqueries representations

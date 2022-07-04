@@ -519,96 +519,13 @@ public class PhraseQuery extends Query {
 
   @Override
   public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
-    return new PhraseWeight(this, field, searcher, scoreMode) {
-
-      private transient TermStates states[];
-
-      @Override
-      protected Similarity.SimScorer getStats(IndexSearcher searcher) throws IOException {
-        final int[] positions = PhraseQuery.this.getPositions();
-        if (positions.length < 2) {
-          throw new IllegalStateException("PhraseWeight does not support less than 2 terms, call rewrite first");
-        } else if (positions[0] != 0) {
-          throw new IllegalStateException("PhraseWeight requires that the first position is 0, call rewrite first");
-        }
-        final IndexReaderContext context = searcher.getTopReaderContext();
-        states = new TermStates[terms.length];
-        TermStatistics termStats[] = new TermStatistics[terms.length];
-        int termUpTo = 0;
-        for (int i = 0; i < terms.length; i++) {
-          final Term term = terms[i];
-          if(i==0){
-            Thread.currentThread().setName(Thread.currentThread().getName()+term.field());
-          }
-          states[i] = TermStates.build(context, term, scoreMode.needsScores());
-          if (scoreMode.needsScores()) {
-            TermStates ts = states[i];
-            if (ts.docFreq() > 0) {
-              termStats[termUpTo++] = searcher.termStatistics(term, ts.docFreq(), ts.totalTermFreq());
-            }
-          }
-        }
-        if (termUpTo > 0) {
-          return similarity.scorer(boost, searcher.collectionStatistics(field), ArrayUtil.copyOfSubArray(termStats, 0, termUpTo));
-        } else {
-          return null; // no terms at all, we won't use similarity
-        }
-      }
-
-      @Override
-      protected PhraseMatcher getPhraseMatcher(LeafReaderContext context, SimScorer scorer, boolean exposeOffsets) throws IOException {
-        assert terms.length > 0;
-        final LeafReader reader = context.reader();
-        PostingsAndFreq[] postingsFreqs = new PostingsAndFreq[terms.length];
-
-        final Terms fieldTerms = reader.terms(field);
-        if (fieldTerms == null) {
-          return null;
-        }
-
-        if (fieldTerms.hasPositions() == false) {
-          throw new IllegalStateException("field \"" + field + "\" was indexed without position data; cannot run PhraseQuery (phrase=" + getQuery() + ")");
-        }
-
-        // Reuse single TermsEnum below:
-        final TermsEnum te = fieldTerms.iterator();
-        float totalMatchCost = 0;
-
-        for (int i = 0; i < terms.length; i++) {
-          final Term t = terms[i];
-          final TermState state = states[i].get(context);
-          if (state == null) { /* term doesnt exist in this segment */
-            assert termNotInReader(reader, t): "no termstate found but term exists in reader";
-            return null;
-          }
-          te.seekExact(t.bytes(), state);
-          PostingsEnum postingsEnum;
-          ImpactsEnum impactsEnum;
-          if (scoreMode == ScoreMode.TOP_SCORES) {
-            postingsEnum = impactsEnum = te.impacts(exposeOffsets ? PostingsEnum.OFFSETS : PostingsEnum.POSITIONS);
-          } else {
-            postingsEnum = te.postings(null, exposeOffsets ? PostingsEnum.OFFSETS : PostingsEnum.POSITIONS);
-            impactsEnum = new SlowImpactsEnum(postingsEnum);
-          }
-          postingsFreqs[i] = new PostingsAndFreq(postingsEnum, impactsEnum, positions[i], t);
-          totalMatchCost += termPositionsCost(te);
-        }
-
-        // sort by increasing docFreq order
-        if (slop == 0) {
-          ArrayUtil.timSort(postingsFreqs);
-          return new ExactPhraseMatcher(postingsFreqs, scoreMode, scorer, totalMatchCost);
-        }
-        else {
-          return new SloppyPhraseMatcher(postingsFreqs, slop, scoreMode, scorer, totalMatchCost, exposeOffsets);
-        }
-      }
-
-      @Override
-      public void extractTerms(Set<Term> queryTerms) {
-        Collections.addAll(queryTerms, terms);
-      }
-    };
+    final String threadName = Thread.currentThread().getName();
+    try {
+      Thread.currentThread().setName(threadName + "_Field:_" + field);
+      return createWeight(searcher, scoreMode, boost);
+    } finally {
+      Thread.currentThread().setName(threadName);
+    }
   }
 
 

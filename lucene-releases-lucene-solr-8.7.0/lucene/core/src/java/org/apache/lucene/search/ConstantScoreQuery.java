@@ -108,9 +108,8 @@ public final class ConstantScoreQuery extends Query {
     }
   }
 
-  @Override
-  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
-    final Weight innerWeight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1f, true);
+
+  public Weight createWeightHelper(IndexSearcher searcher, ScoreMode scoreMode, float boost, Weight innerWeight) throws IOException {
     if (scoreMode.needsScores()) {
       return new ConstantScoreWeight(this, boost) {
         @Override
@@ -176,70 +175,15 @@ public final class ConstantScoreQuery extends Query {
   }
 
   @Override
+  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
+    final Weight innerWeight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1f, true);
+    return createWeightHelper(searcher, scoreMode, boost, innerWeight);
+  }
+
+  @Override
   public Weight addFieldNameBeforeCreateWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
     final Weight innerWeight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1f, false);
-    if (scoreMode.needsScores()) {
-      return new ConstantScoreWeight(this, boost) {
-        @Override
-        public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-          if (scoreMode.isExhaustive() == false) {
-            return super.bulkScorer(context);
-          }
-          final BulkScorer innerScorer = innerWeight.bulkScorer(context);
-          if (innerScorer == null) {
-            return null;
-          }
-          return new ConstantBulkScorer(innerScorer, this, score());
-        }
-
-        @Override
-        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-          ScorerSupplier innerScorerSupplier = innerWeight.scorerSupplier(context);
-          if (innerScorerSupplier == null) {
-            return null;
-          }
-          return new ScorerSupplier() {
-            @Override
-            public Scorer get(long leadCost) throws IOException {
-              final Scorer innerScorer = innerScorerSupplier.get(leadCost);
-              final TwoPhaseIterator twoPhaseIterator = innerScorer.twoPhaseIterator();
-              if (twoPhaseIterator == null) {
-                return new ConstantScoreScorer(innerWeight, score(), scoreMode, innerScorer.iterator());
-              } else {
-                return new ConstantScoreScorer(innerWeight, score(), scoreMode, twoPhaseIterator);
-              }
-            }
-
-            @Override
-            public long cost() {
-              return innerScorerSupplier.cost();
-            }
-          };
-        }
-
-        @Override
-        public Matches matches(LeafReaderContext context, int doc) throws IOException {
-          return innerWeight.matches(context, doc);
-        }
-
-        @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          ScorerSupplier scorerSupplier = scorerSupplier(context);
-          if (scorerSupplier == null) {
-            return null;
-          }
-          return scorerSupplier.get(Long.MAX_VALUE);
-        }
-
-        @Override
-        public boolean isCacheable(LeafReaderContext ctx) {
-          return innerWeight.isCacheable(ctx);
-        }
-
-      };
-    } else {
-      return innerWeight;
-    }
+    return createWeightHelper(searcher, scoreMode, boost, innerWeight);
   }
 
   @Override

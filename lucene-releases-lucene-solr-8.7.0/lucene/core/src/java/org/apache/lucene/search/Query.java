@@ -77,7 +77,6 @@ public abstract class Query {
   public Query rewrite(IndexReader reader) throws IOException {
     return this;
   }
-
   /**
    * Recurse through the query tree, visiting any child queries
    * @param visitor a QueryVisitor to be called by each query in the tree

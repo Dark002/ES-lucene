@@ -723,12 +723,7 @@ public class IndexSearcher {
    */
   public Weight createWeight(Query query, ScoreMode scoreMode, float boost) throws IOException {
     final QueryCache queryCache = this.queryCache;
-    Weight weight;
-    if(query instanceof BooleanQuery || query instanceof BoostQuery || query instanceof ConstantScoreQuery ||
-            query instanceof IndexOrDocValuesQuery || query instanceof MultiPhraseQuery || query instanceof MultiTermQueryConstantScoreWrapper ||
-            query instanceof NormsFieldExistsQuery || query instanceof PhraseQuery || query instanceof SynonymQuery || query instanceof TermQuery)
-      weight = query.addFieldNameBeforeCreateWeight(this, scoreMode, boost);
-    else weight = query.createWeight(this, scoreMode, boost);
+    Weight weight = query.addFieldNameBeforeCreateWeight(this, scoreMode, boost);
     if (scoreMode.needsScores() == false && queryCache != null) {
       weight = queryCache.doCache(weight, queryCachingPolicy);
     }
@@ -739,11 +734,7 @@ public class IndexSearcher {
     final QueryCache queryCache = this.queryCache;
     Weight weight;
     if(fieldAdded == true)weight = query.createWeight(this, scoreMode, boost);
-    else if(query instanceof BooleanQuery || query instanceof BoostQuery || query instanceof ConstantScoreQuery ||
-            query instanceof IndexOrDocValuesQuery || query instanceof MultiPhraseQuery || query instanceof MultiTermQueryConstantScoreWrapper ||
-            query instanceof NormsFieldExistsQuery || query instanceof PhraseQuery || query instanceof SynonymQuery || query instanceof TermQuery)
-      weight = query.addFieldNameBeforeCreateWeight(this, scoreMode, boost);
-    else weight = query.createWeight(this, scoreMode, boost);
+    else weight = query.addFieldNameBeforeCreateWeight(this, scoreMode, boost);
     if (scoreMode.needsScores() == false && queryCache != null) {
       weight = queryCache.doCache(weight, queryCachingPolicy);
     }
